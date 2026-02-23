@@ -21,7 +21,6 @@ import { MoreDetails } from "./MoreDetails";
 import EncounterHistoryModal from "./EncounterHistoryModal";
 import MatchCriteriaModal from "./MatchCriteria";
 import { EncounterStore } from "./stores";
-import { setEncounterState } from "./stores/helperFunctions";
 import { DateSectionReview } from "./DateSectionReview";
 import { IdentifySectionReview } from "./IdentifySectionReview";
 import { MetadataSectionReview } from "./MetadataSectionReview";
@@ -38,26 +37,33 @@ import Modal from "react-bootstrap/Modal";
 import { Divider } from "antd";
 import { get } from "lodash-es";
 import CollabModal from "./CollabModal";
+import Alert from "react-bootstrap/Alert";
 
 const Encounter = observer(() => {
   const [store] = useState(() => new EncounterStore());
-  const { data: siteSettings } = useGetSiteSettings();
+  const { data: siteSettings, loading: siteSettingsLoading } =
+    useGetSiteSettings();
   const [encounterValid, setEncounterValid] = useState(true);
   const [encounterDeleted, setEncounterDeleted] = useState(false);
   const intl = useIntl();
+
   const encounterStates = store.siteSettingsData?.encounterState;
-  const encounterStatesOptions =
-    store.encounterData?.state && encounterStates?.length > 0
-      ? encounterStates.map((state) => ({
-          value: state,
-          label: state,
-        }))
-      : [{ value: "loading", label: "loading" }];
+  const encounterStatesLoaded = encounterStates !== undefined;
+  const encounterStatesOptions = encounterStatesLoaded
+    ? encounterStates.map((state) => ({ value: state, label: state }))
+    : [{ value: "loading", label: "loading" }];
+  const rawState = store.encounterData?.state || "";
+  const selectedState = !encounterStatesLoaded
+    ? "loading"
+    : encounterStates.includes(rawState)
+      ? rawState
+      : "";
 
   useEffect(() => {
     if (!siteSettings) return;
     store.setSiteSettings(siteSettings);
-  }, [siteSettings, store]);
+    store.setSiteSettingsLoading(siteSettingsLoading);
+  }, [siteSettings, store, siteSettingsLoading]);
 
   const params = new URLSearchParams(window.location.search);
   const encounterId = params.get("number");
@@ -296,21 +302,29 @@ const Encounter = observer(() => {
           </Modal.Body>
         </Modal>
       )}
-      <ContactInfoModal
-        isOpen={store.modals.openContactInfoModal}
-        onClose={() => store.modals.setOpenContactInfoModal(false)}
-        store={store}
-      />
-      <EncounterHistoryModal
-        isOpen={store.modals.openEncounterHistoryModal}
-        onClose={() => store.modals.setOpenEncounterHistoryModal(false)}
-        store={store}
-      />
-      <MatchCriteriaModal
-        store={store}
-        isOpen={store.modals.openMatchCriteriaModal}
-        onClose={() => store.modals.setOpenMatchCriteriaModal(false)}
-      />
+
+      {store.modals.openContactInfoModal && (
+        <ContactInfoModal
+          isOpen={store.modals.openContactInfoModal}
+          onClose={() => store.modals.setOpenContactInfoModal(false)}
+          store={store}
+        />
+      )}
+      {store.modals.openEncounterHistoryModal && (
+        <EncounterHistoryModal
+          isOpen={store.modals.openEncounterHistoryModal}
+          onClose={() => store.modals.setOpenEncounterHistoryModal(false)}
+          store={store}
+        />
+      )}
+      {store.modals.openMatchCriteriaModal && (
+        <MatchCriteriaModal
+          store={store}
+          isOpen={store.modals.openMatchCriteriaModal}
+          onClose={() => store.modals.setOpenMatchCriteriaModal(false)}
+        />
+      )}
+
       <Row>
         <Col md={6}>
           <h2>
@@ -336,13 +350,22 @@ const Encounter = observer(() => {
         <Col md={6} className="text-end">
           <PillWithDropdown
             options={encounterStatesOptions}
-            selectedOption={store.encounterData?.state || "loading"}
-            onSelect={(value) => {
-              if (value === "loading") return;
-              setEncounterState(value, store.encounterData?.id);
-              store.refreshEncounterData();
+            selectedOption={selectedState}
+            onSelect={async (value) => {
+              await store.changeEncounterState(value);
             }}
           />
+          {!!store.errors.getFieldError("header", "state") && (
+            <div className="mt-2 d-flex justify-content-end">
+              <Alert
+                variant="danger"
+                className="mb-0 py-1 px-2"
+                style={{ maxWidth: 420 }}
+              >
+                {store.errors.getFieldError("header", "state")}
+              </Alert>
+            </div>
+          )}
         </Col>
       </Row>
 

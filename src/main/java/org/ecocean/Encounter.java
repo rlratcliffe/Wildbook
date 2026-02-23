@@ -7,27 +7,10 @@ import java.lang.Math;
 import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
-import java.util.Vector;
 
 import javax.jdo.Query;
 
@@ -60,6 +43,7 @@ import org.ecocean.Util.MeasurementDesc;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.LocalDateTime;
 
 import org.datanucleus.api.rest.orgjson.JSONArray;
 import org.datanucleus.api.rest.orgjson.JSONException;
@@ -1098,6 +1082,32 @@ public class Encounter extends Base implements java.io.Serializable {
         return date;
     }
 
+    public org.json.JSONObject getDateValuesJson() {
+        org.json.JSONObject dv = new org.json.JSONObject();
+        // in theory we *always* should have at least a year, but our data probably says otherwise
+        // sadly we just bail empty if we dont have a year
+        if (getYear() < 1900) return dv;
+        dv.put("year", getYear());
+        // from here on out we only add things if the previous one existed; hence the short-circuit return
+        // e.g. we do not add a day if there was no month
+        if ((getMonth() < 1) || (getMonth() > 12)) return dv;
+        dv.put("month", getMonth());
+        // sorry not checking actual days-per-month here
+        if ((getDay() < 1) || (getDay() > 31)) return dv;
+        dv.put("day", getDay());
+        if ((getHour() < 0) || (getHour() > 23)) return dv;
+        dv.put("hour", getHour());
+        // sigh, deal with string-based minutes...
+        Integer min = getMinutesInteger();
+        if ((min != null) && (min >= 0) && (min < 60)) {
+            dv.put("minutes", min);
+        } else {
+            // choosing to do this because we *must* have hour value here, so dumb to leave null?
+            dv.put("minutes", 0);
+        }
+        return dv;
+    }
+
     // @return a String with text about how the size of this animal was estimated/measured
     public String getSizeGuess() {
         return size_guess;
@@ -1120,6 +1130,13 @@ public class Encounter extends Base implements java.io.Serializable {
 
     public String getMinutes() {
         return minutes;
+    }
+
+    public Integer getMinutesInteger() {
+        Integer min = null;
+
+        try { min = Integer.parseInt(minutes); } catch (Exception e) {}
+        return min;
     }
 
     public int getHour() {
@@ -1411,7 +1428,7 @@ public class Encounter extends Base implements java.io.Serializable {
         }
         System.out.println("trying spotImageAsMediaAsset with file=" + fullPath.toString());
         org.json.JSONObject sp = astore.createParameters(fullPath);
-        sp.put("key", this.subdir() + "/spotImage-" + spotImageFileName); // note: this really only applies to S3 AssetStores, but shouldnt hurt
+        sp.put("key", this.subdir() + "/spotImage-" + spotImageFileName);
                                                                           // others?
         MediaAsset ma = astore.find(sp, myShepherd);
         if (ma == null) {
@@ -2290,10 +2307,10 @@ public class Encounter extends Base implements java.io.Serializable {
             if (hour > -1) { localHour = hour; }
             int myMinutes = 0;
             try { myMinutes = Integer.parseInt(minutes); } catch (Exception e) {}
-            GregorianCalendar gc = new GregorianCalendar(year, localMonth, localDay, localHour,
-                myMinutes);
-
-            return new Long(gc.getTimeInMillis());
+            TimeZone tz = TimeZone.getTimeZone("UTC");
+            Calendar calendar = Calendar.getInstance(tz);
+            calendar.set(year, localMonth, localDay, localHour, myMinutes);
+            return new Long(calendar.getTimeInMillis());
         }
         return null;
     }
@@ -2307,7 +2324,7 @@ public class Encounter extends Base implements java.io.Serializable {
 
     // this will set all date stuff based on ms since epoch
     public void setDateInMilliseconds(long ms) {
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
         cal.setTimeInMillis(ms);
         this.year = cal.get(Calendar.YEAR);
@@ -4235,6 +4252,7 @@ public class Encounter extends Base implements java.io.Serializable {
                     jgen.writeBooleanField("isTrivial", ann.isTrivial());
                     jgen.writeNumberField("theta", ann.getTheta());
                     jgen.writeArrayFieldStart("boundingBox");
+                    Feature ft = ann.getFeature(); // attempt force loading features for getBbox()
                     int[] bbox = ann.getBbox();
                     if (bbox != null)
                         for (int i : bbox) {
@@ -4740,6 +4758,7 @@ public class Encounter extends Base implements java.io.Serializable {
             }
         }
         // additional fields we want
+        rtn.put("dateValues", getDateValuesJson());
         rtn.put("researcherComments", getRComments());
         rtn.put("groupRole", getGroupRole());
         rtn.put("identificationRemarks", getIdentificationRemarks());
@@ -5034,7 +5053,7 @@ public class Encounter extends Base implements java.io.Serializable {
             break;
         case "hour":
             if (value == null) {
-                setHour(0);
+                setHour(-1); // grr
             } else {
                 setHour((Integer)value);
             }

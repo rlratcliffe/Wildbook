@@ -222,7 +222,7 @@
   "INDIVIDUAL_ID": "ID Individuale",
   "SIGHTING_ID": "ID di Avvistamento",
   "ALTERNATIVE_ID": "ID Alternativo",
-  "CREATED_DATE": "Data di Creazione",
+  "CREATED_DATE": "Data dell'Incontro",
   "LOCATION_ID": "ID di Localizzazione",
   "SPECIES": "Specie",
   "SUBMITTER": "Mittente",
@@ -571,7 +571,7 @@
   "GROUP_ROLE": "Ruolo nel gruppo",
   "MATCH_DESC_1": "Scegli l’algoritmo e imposta i filtri per affinare la ricerca.",
   "OWNER": "Proprietario",
-  "SELECT_ALGORITHM": "Seleziona algoritmo",
+  "SELECT_ALGORITHM": "Seleziona algoritmo/i",
   "MATCH": "Confronta",
   "SHOW_ANNOTATIONS": "Mostra annotazioni",
   "EDIT_ANNOTATION": "Modifica annotazione",
@@ -644,6 +644,9 @@
   "CONFIGURE_SESSIONS_FOR_EXPORT": "Configura le sessioni per l'esportazione",
   "GIS_DATA": "Dati GIS",
   "ENCOUNTER_ANNOTATION": "Annotazione dell'incontro",
+  "COCO_FORMAT": "Formato COCO",
+  "COCO_FORMAT_DESCRIPTION": "Esporta le annotazioni in formato COCO per l'addestramento AI/ML. Include immagini e bounding box.",
+  "EXPORT_ZIP_FILE": "Esporta file ZIP",
   "THIS_ENCOUNTER": "Questo incontro",
   "CLICK_ANNOTATION_TO_SEE_MATCH_RESULTS": "Clicca sull'annotazione per vedere i risultati della corrispondenza",
   "ADD_TO_PROJECT": "Aggiungi al progetto",
@@ -698,5 +701,8 @@
   "REQUEST_REJECTED": "La tua richiesta di collaborare con questo utente è stata rifiutata.",
   "ACCESS_PENDING": "La tua richiesta di collaborazione è in sospeso",
   "CALENDAR_VIEW_DESC": "Visualizza i risultati della ricerca degli encounter in un calendario per data dell’incontro. Fai clic su un ID di encounter per aprirne i dettagli.",
-  "ADD_ENCOUNTER_TO_PROJECT_DESC": "Seleziona uno o più encounter da aggiungere a un progetto."
+  "ADD_ENCOUNTER_TO_PROJECT_DESC": "Seleziona uno o più encounter da aggiungere a un progetto.",
+  "INVALID_DATE": "Data non valida",
+  "INVALID_LAT_LON": "Inserisci una latitudine e una longitudine valide",
+  "INVALID_MEASUREMENTS": "Inserisci valori validi"
 }

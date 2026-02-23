@@ -58,7 +58,30 @@ const ImageCard = observer(({ store = {} }) => {
   const handleEnter = (text) => setTip((s) => ({ ...s, show: true, text }));
   const handleMove = (e) => {
     const r = boxRef.current.getBoundingClientRect();
-    setTip((s) => ({ ...s, x: e.clientX - r.left, y: e.clientY - r.top }));
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+
+    const tooltipWidth = 150;
+    const tooltipHeight = 60;
+    const padding = 30;
+
+    let finalX = x + padding;
+    let finalY = y + padding;
+
+    if (x + tooltipWidth + padding > r.width) {
+      finalX = x - tooltipWidth - padding;
+    }
+    if (y + tooltipHeight + padding > r.height) {
+      finalY = y - tooltipHeight - padding;
+    }
+    if (finalX < 0) {
+      finalX = padding;
+    }
+    if (finalY < 0) {
+      finalY = padding;
+    }
+
+    setTip((s) => ({ ...s, x: finalX, y: finalY }));
   };
   const handleLeave = () => setTip({ show: false, x: 0, y: 0, text: "" });
 
@@ -174,6 +197,13 @@ const ImageCard = observer(({ store = {} }) => {
     }
   };
 
+  const maxArea = React.useMemo(() => {
+    return rects.reduce(
+      (max, r) => Math.max(max, (r.width || 0) * (r.height || 0)),
+      1,
+    );
+  }, [rects]);
+
   return (
     <div
       className="d-flex flex-column justify-content-between mt-3 position-relative mb-3"
@@ -247,6 +277,12 @@ const ImageCard = observer(({ store = {} }) => {
               };
             }
 
+            const area = (rect.width || 0) * (rect.height || 0);
+            const score = 1 - area / maxArea;
+            const baseZ = 10 + Math.round(score * 1000);
+            const finalZ =
+              rect.annotationId === clickedAnnotation?.id ? 2000 : baseZ;
+
             return (
               <div
                 id={`rect-${index}`}
@@ -271,8 +307,7 @@ const ImageCard = observer(({ store = {} }) => {
                   transform: `rotate(${(newRect.rotation * 180) / Math.PI}deg)`,
                   transformOrigin: "center",
                   cursor: "pointer",
-                  zIndex:
-                    newRect.annotationId === clickedAnnotation?.id ? 2000 : 10,
+                  zIndex: finalZ,
                   backgroundColor:
                     newRect.annotationId === clickedAnnotation?.id
                       ? "rgba(240, 11, 11, 0.3)"
