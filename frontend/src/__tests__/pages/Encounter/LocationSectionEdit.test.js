@@ -7,7 +7,7 @@ jest.mock("mobx-react-lite", () => ({
   observer: (Comp) => Comp,
 }));
 
-jest.mock("../../../utils/converToTreeData", () => ({
+jest.mock("../../../utils/convertToTreeDataWithName", () => ({
   __esModule: true,
   default: jest.fn(() => [
     { value: "loc-1", label: "Location 1" },
@@ -183,7 +183,7 @@ describe("LocationSectionEdit", () => {
 
   test("Tree data is built from siteSettingsData.locationData", () => {
     const convertToTreeDataWithName =
-      require("../../../utils/cconvertToTreeDataWithName").default;
+      require("../../../utils/convertToTreeDataWithName").default;
     const store = makeStore({
       siteSettingsData: {
         locationData: { locationID: [{ id: 1, name: "X" }] },

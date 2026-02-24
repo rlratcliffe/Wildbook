@@ -10,8 +10,8 @@ jest.mock("react-intl", () => ({
   FormattedMessage: ({ id }) => <span>{id}</span>,
 }));
 
-jest.mock("react-bootstrap", () => ({
-  Modal: ({ show, onHide, children }) =>
+jest.mock("react-bootstrap", () => {
+  const Modal = ({ show, onHide, children }) =>
     show ? (
       <div data-testid="modal">
         <button data-testid="modal-close" onClick={onHide}>
@@ -19,11 +19,12 @@ jest.mock("react-bootstrap", () => ({
         </button>
         {children}
       </div>
-    ) : null,
-  ModalHeader: ({ children }) => <div>{children}</div>,
-  ModalTitle: ({ children }) => <h2>{children}</h2>,
-  ModalBody: ({ children }) => <div>{children}</div>,
-}));
+    ) : null;
+  Modal.Header = ({ children }) => <div>{children}</div>;
+  Modal.Title = ({ children }) => <h2>{children}</h2>;
+  Modal.Body = ({ children }) => <div>{children}</div>;
+  return { Modal };
+});
 
 jest.mock("antd/es/tree-select", () => (props) => (
   <div

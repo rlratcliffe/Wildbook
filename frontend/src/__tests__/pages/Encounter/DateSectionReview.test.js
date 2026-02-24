@@ -27,7 +27,7 @@ const makeStore = (values = {}) => ({
 describe("DateSectionReview", () => {
   test("formats ISO with T, milliseconds and Z", () => {
     const store = makeStore({
-      date: { date: "2025-01-02T03:04:05.123Z", verbatimEventDate: "raw" },
+      date: { dateValues: "2025-01-02T03:04:05.123Z", verbatimEventDate: "raw" },
     });
     render(<DateSectionReview store={store} />);
     expect(screen.getByTestId("val-DATE")).toHaveTextContent(
@@ -36,7 +36,7 @@ describe("DateSectionReview", () => {
     expect(screen.getByTestId("val-VERBATIM_EVENT_DATE")).toHaveTextContent(
       "raw",
     );
-    expect(store.getFieldValue).toHaveBeenCalledWith("date", "date");
+    expect(store.getFieldValue).toHaveBeenCalledWith("date", "dateValues");
     expect(store.getFieldValue).toHaveBeenCalledWith(
       "date",
       "verbatimEventDate",
@@ -45,7 +45,7 @@ describe("DateSectionReview", () => {
 
   test("formats ISO with timezone offset", () => {
     const store = makeStore({
-      date: { date: "2024-06-07T08:09:10+02:00", verbatimEventDate: "" },
+      date: { dateValues: "2024-06-07T08:09:10+02:00", verbatimEventDate: "" },
     });
     render(<DateSectionReview store={store} />);
     expect(screen.getByTestId("val-DATE")).toHaveTextContent(
@@ -55,7 +55,7 @@ describe("DateSectionReview", () => {
 
   test("renders empty string when date is undefined/null", () => {
     const store = makeStore({
-      date: { date: undefined, verbatimEventDate: "verbatim" },
+      date: { dateValues: undefined, verbatimEventDate: "verbatim" },
     });
     render(<DateSectionReview store={store} />);
     expect(screen.getByTestId("val-DATE")).toHaveTextContent("");
@@ -66,7 +66,7 @@ describe("DateSectionReview", () => {
 
   test("keeps seconds when no milliseconds present", () => {
     const store = makeStore({
-      date: { date: "2023-12-31T23:59:59Z", verbatimEventDate: "" },
+      date: { dateValues: "2023-12-31T23:59:59Z", verbatimEventDate: "" },
     });
     render(<DateSectionReview store={store} />);
     expect(screen.getByTestId("val-DATE")).toHaveTextContent(

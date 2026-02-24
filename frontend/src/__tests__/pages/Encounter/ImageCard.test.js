@@ -105,6 +105,7 @@ const baseEncounterData = {
 };
 
 const makeStore = (overrides = {}) => ({
+  access: "write",
   encounterData: baseEncounterData,
   encounterAnnotations: baseEncounterData.mediaAssets[0].annotations,
   selectedImageIndex: 0,
@@ -152,7 +153,7 @@ describe("ImageCard", () => {
 
     expect(screen.getByText("IMAGES")).toBeInTheDocument();
     expect(screen.getByText("first.jpg")).toBeInTheDocument();
-    expect(screen.getByText("2 tags")).toBeInTheDocument();
+    expect(screen.getByText("2 KEYWORDS")).toBeInTheDocument();
     const img = screen.getByAltText("encounter image");
     expect(img).toHaveAttribute("src", "http://img/1.jpg");
     expect(store.setIntl).toHaveBeenCalled();
@@ -242,14 +243,14 @@ describe("ImageCard", () => {
     expect(screen.getByText("45%")).toBeInTheDocument();
   });
 
-  test("if no mediaAssets, rects should be empty and image src blank", () => {
+  test("if no mediaAssets, rects should be empty and no-image message shown", () => {
     const store = makeStore({
       encounterData: { id: "E-1", mediaAssets: [] },
     });
     renderCard(store);
 
-    const img = screen.getByAltText("encounter image");
-    expect(img).toHaveAttribute("src", "");
+    expect(screen.queryByAltText("encounter image")).not.toBeInTheDocument();
+    expect(screen.getByText("NO_IMAGE_AVAILABLE")).toBeInTheDocument();
   });
 
   test("calls initializeFlow when store.flow is null", () => {

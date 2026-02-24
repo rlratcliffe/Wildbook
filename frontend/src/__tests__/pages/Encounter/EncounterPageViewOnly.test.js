@@ -50,6 +50,7 @@ describe("EncounterPageViewOnly", () => {
     window.history.pushState({}, "", "http://localhost/encounter?number=E-777");
 
     const payload = {
+      isPublic: true,
       individualDisplayName: "Flipper",
       date: "2025-01-02",
       verbatimEventDate: "Jan 2, 2025",
@@ -105,6 +106,7 @@ describe("EncounterPageViewOnly", () => {
     window.history.pushState({}, "", "http://localhost/encounter?number=E-999");
     axios.get.mockResolvedValueOnce({
       data: {
+        isPublic: true,
         individualDisplayName: "",
         mediaAssets: [],
       },
