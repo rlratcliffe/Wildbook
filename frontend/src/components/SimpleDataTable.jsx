@@ -4,15 +4,6 @@ import ReactPaginate from "react-paginate";
 import { Row, Col } from "react-bootstrap";
 import ThemeColorContext from "../ThemeColorProvider";
 
-const customStyles = {
-  rows: {
-    style: {
-      border: "none !important",
-      borderRadius: "5px",
-    },
-  },
-};
-
 const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
   const theme = useContext(ThemeColorContext);
   const [currentPage, setCurrentPage] = useState(0);
@@ -28,8 +19,8 @@ const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
         tableID: row.tableID ?? index + 1,
       }));
       setDataset(indexedData);
-      setCurrentPage(0);
     }
+    setCurrentPage(0);
     setPagedData([...dataset].slice(0, perPage));
   }, [data]);
 
@@ -62,39 +53,40 @@ const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
     setDataset(sortedData);
   };
 
-  const conditionalRowStyles = [
-    {
-      when: (row) => (dataset.indexOf(row) % perPage) % 2 === 0,
+  const tableStyles = {
+    rows: {
       style: {
-        backgroundColor: "#ffffff",
-        "&:hover": {
-          backgroundColor: theme?.primaryColors?.primary50,
-        },
+        borderRadius: "2px",
+        border: "none !important",
+        backgroundColor: theme?.defaultColors.white,
+      },
+      stripedStyle: {
+        border: "none !important",
+        backgroundColor: theme?.grayColors.gray50,
+      },
+      highlightOnHoverStyle: {
+        outlineStyle: "none",
+        outlineWidth: "0px",
+        outlineColor: "transparent",
+        backgroundColor: theme?.primaryColors?.primary50,
+        transition: "background-color 0.2s ease",
       },
     },
-    {
-      when: (row) => (dataset.indexOf(row) % perPage) % 2 !== 0,
-      style: {
-        backgroundColor: "#f2f2f2",
-        "&:hover": {
-          backgroundColor: theme?.primaryColors?.primary50,
-        },
-      },
-    },
-  ];
+  };
 
   return (
     <div className="container mt-3">
       <DataTable
         columns={userColumns}
         data={pagedData}
-        customStyles={customStyles}
-        conditionalRowStyles={conditionalRowStyles}
+        customStyles={tableStyles}
+        sortServer={true}
         onSort={dataSortFunction}
         keyField="tableID"
         highlightOnHover
         fixedHeader
         fixedHeaderScrollHeight="85vh"
+        striped
       />
       <Row className="mt-3 d-flex justify-content-center">
         <Col xs="auto">
