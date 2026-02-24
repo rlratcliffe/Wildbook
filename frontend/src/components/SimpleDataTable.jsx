@@ -93,6 +93,8 @@ const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
         onSort={dataSortFunction}
         keyField="tableID"
         highlightOnHover
+        fixedHeader
+        fixedHeaderScrollHeight="85vh"
       />
       <Row className="mt-3 d-flex justify-content-center">
         <Col xs="auto">
