@@ -1,10 +1,14 @@
 /* eslint-disable react/display-name */
-import React, { Suspense } from "react";
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 jest.mock("mobx-react-lite", () => ({
   observer: (Comp) => Comp,
+}));
+
+jest.mock("react-intl", () => ({
+  FormattedMessage: ({ id }) => <span>{id}</span>,
 }));
 
 jest.mock("../../../utils/convertToTreeDataWithName", () => ({
@@ -42,8 +46,13 @@ jest.mock("../../../components/generalInputs/CoordinatesInput", () => () => (
   <div data-testid="coordinates-input" />
 ));
 
-jest.mock("antd/es/tree-select", () => {
-  const TS = ({ value, onChange, treeData }) => (
+jest.mock("../../../components/ContainerWithSpinner", () => (props) => (
+  <div data-testid="container-spinner">{props.children}</div>
+));
+
+jest.mock("antd/es/tree-select", () => ({
+  __esModule: true,
+  default: ({ value, onChange, treeData }) => (
     <select
       data-testid="tree-select"
       value={value || ""}
@@ -56,10 +65,8 @@ jest.mock("antd/es/tree-select", () => {
         </option>
       ))}
     </select>
-  );
-  TS.displayName = "MockAntdTreeSelect";
-  return TS;
-});
+  ),
+}));
 
 jest.mock("react-bootstrap", () => ({
   Alert: (p) => <div role="alert">{p.children}</div>,
@@ -68,6 +75,7 @@ jest.mock("react-bootstrap", () => ({
 import { LocationSectionEdit } from "../../../pages/Encounter/LocationSectionEdit";
 
 const makeStore = (overrides = {}) => ({
+  siteSettingsLoading: false,
   siteSettingsData: {
     locationData: { locationID: [] },
     country: ["Canada", "United States"],
@@ -82,33 +90,25 @@ const makeStore = (overrides = {}) => ({
 });
 
 describe("LocationSectionEdit", () => {
-  test("renders location text input, tree-select, country select, coordinates", () => {
+  test("renders location text input, tree-select, country select, coordinates", async () => {
     const store = makeStore();
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+    render(<LocationSectionEdit store={store} />);
 
     expect(screen.getByTestId("text-LOCATION")).toBeInTheDocument();
     expect(screen.getByTestId("select-COUNTRY")).toBeInTheDocument();
     expect(screen.getByTestId("coordinates-input")).toBeInTheDocument();
-
     expect(screen.getByText("LOCATION_ID")).toBeInTheDocument();
+    expect(await screen.findByTestId("tree-select")).toBeInTheDocument();
   });
 
-  test("typing in LOCATION updates store", async () => {
+  test("typing in LOCATION updates store", () => {
     const store = makeStore();
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+    render(<LocationSectionEdit store={store} />);
 
-    // await user.type(screen.getByTestId("text-LOCATION"), "Great Barrier Reef");
     fireEvent.change(screen.getByTestId("text-LOCATION"), {
       target: { value: "Great Barrier Reef" },
     });
+
     expect(store.setFieldValue).toHaveBeenCalledWith(
       "location",
       "verbatimLocality",
@@ -125,13 +125,10 @@ describe("LocationSectionEdit", () => {
       }),
     });
 
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+    render(<LocationSectionEdit store={store} />);
 
-    await user.selectOptions(screen.getByTestId("tree-select"), "loc-2");
+    await user.selectOptions(await screen.findByTestId("tree-select"), "loc-2");
+
     expect(store.setFieldValue).toHaveBeenCalledWith(
       "location",
       "locationId",
@@ -142,20 +139,19 @@ describe("LocationSectionEdit", () => {
   test("COUNTRY select uses siteSettingsData.country", async () => {
     const user = userEvent.setup();
     const store = makeStore();
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+
+    render(<LocationSectionEdit store={store} />);
 
     const countrySelect = screen.getByTestId("select-COUNTRY");
     expect(countrySelect).toBeInTheDocument();
+
     expect(screen.getByRole("option", { name: "Canada" })).toBeInTheDocument();
     expect(
       screen.getByRole("option", { name: "United States" }),
     ).toBeInTheDocument();
 
     await user.selectOptions(countrySelect, "Canada");
+
     expect(store.setFieldValue).toHaveBeenCalledWith(
       "location",
       "country",
@@ -171,11 +167,7 @@ describe("LocationSectionEdit", () => {
       },
     });
 
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+    render(<LocationSectionEdit store={store} />);
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("lat is invalid;lng is invalid");
@@ -184,6 +176,7 @@ describe("LocationSectionEdit", () => {
   test("Tree data is built from siteSettingsData.locationData", () => {
     const convertToTreeDataWithName =
       require("../../../utils/convertToTreeDataWithName").default;
+
     const store = makeStore({
       siteSettingsData: {
         locationData: { locationID: [{ id: 1, name: "X" }] },
@@ -191,16 +184,10 @@ describe("LocationSectionEdit", () => {
       },
     });
 
-    render(
-      <Suspense fallback={<div>fallback...</div>}>
-        <LocationSectionEdit store={store} />
-      </Suspense>,
-    );
+    render(<LocationSectionEdit store={store} />);
 
     expect(convertToTreeDataWithName).toHaveBeenCalledWith(
       store.siteSettingsData.locationData.locationID,
-      "value",
-      "label",
     );
   });
 });

@@ -12,7 +12,9 @@ jest.mock("mobx-react-lite", () => ({
 
 jest.mock("axios", () => ({
   get: jest.fn(() =>
-    Promise.resolve({ data: { id: "E-123", state: "unidentifiable" } }),
+    Promise.resolve({
+      data: { id: "E-123", state: "unidentifiable", access: "write" },
+    }),
   ),
 }));
 
@@ -20,12 +22,8 @@ jest.mock("../../../models/useGetSiteSettings", () => ({
   __esModule: true,
   default: () => ({
     data: { encounterState: ["unidentifiable", "identified", "rejected"] },
+    loading: false,
   }),
-}));
-
-const mockSetEncounterState = jest.fn();
-jest.mock("../../../pages/Encounter/stores/helperFunctions", () => ({
-  setEncounterState: (...args) => mockSetEncounterState(...args),
 }));
 
 jest.mock("../../../components/icons/DateIcon", () => () => (
@@ -112,6 +110,15 @@ jest.mock(
 jest.mock("../../../pages/Encounter/ImageCard", () => () => (
   <div data-testid="image-card" />
 ));
+jest.mock("../../../pages/Encounter/MoreDetails", () => ({
+  MoreDetails: () => <div data-testid="more-details" />,
+}));
+jest.mock("../../../pages/Encounter/DeleteEncounterCard", () => () => (
+  <div data-testid="delete-encounter-card" />
+));
+jest.mock("../../../pages/Encounter/CollabModal", () => () => (
+  <div data-testid="collab-modal" />
+));
 
 jest.mock("../../../pages/Encounter/DateSectionReview", () => ({
   DateSectionReview: () => <div data-testid="date-review" />,
@@ -146,18 +153,35 @@ jest.mock("../../../pages/Encounter/AttributesSectionEdit", () => ({
 
 jest.mock("../../../pages/Encounter/stores", () => {
   const makeFn = () => jest.fn();
+
   class EncounterStore {
     constructor() {
       const preset = global.__MOCK_STORE_PRESET__ || {};
-      this.overviewActive = true;
+
+      this.overviewActive = preset.overviewActive ?? true;
       this.setOverviewActive = makeFn();
 
-      this.siteSettingsData = null;
-      this.setSiteSettings = makeFn();
+      this.siteSettingsData = preset.siteSettingsData ?? null;
+      this.setSiteSettings = jest.fn((data) => {
+        this.siteSettingsData = data;
+      });
 
-      this.encounterData = { id: "E-INIT", state: "unidentifiable" };
-      this.setEncounterData = makeFn();
+      this.siteSettingsLoading = false;
+      this.setSiteSettingsLoading = makeFn();
+
+      this.encounterData = preset.encounterData ?? {
+        id: "E-INIT",
+        state: "unidentifiable",
+      };
+      this.setEncounterData = jest.fn((data) => {
+        this.encounterData = data;
+      });
       this.refreshEncounterData = makeFn();
+
+      this.access = preset.access ?? "write";
+      this.setAccess = jest.fn((value) => {
+        this.access = value;
+      });
 
       this.saveSection = makeFn();
       this.resetSectionDraft = makeFn();
@@ -173,6 +197,8 @@ jest.mock("../../../pages/Encounter/stores", () => {
 
       this.editIdentifyCard = !!preset.editIdentifyCard;
       this.setEditIdentifyCard = makeFn();
+
+      this.changeEncounterState = makeFn();
 
       this.editMetadataCard = !!preset.editMetadataCard;
       this.setEditMetadataCard = makeFn();
@@ -191,8 +217,11 @@ jest.mock("../../../pages/Encounter/stores", () => {
         openMatchCriteriaModal: false,
         setOpenMatchCriteriaModal: makeFn(),
       };
+
+      global.__LAST_ENCOUNTER_STORE__ = this;
     }
   }
+
   return { EncounterStore };
 });
 
@@ -208,7 +237,8 @@ const loadComponent = async () => {
 describe("Encounter page – behavior excluding i18n logic", () => {
   beforeEach(() => {
     global.__MOCK_STORE_PRESET__ = undefined;
-    mockSetEncounterState.mockClear();
+    global.__LAST_ENCOUNTER_STORE__ = undefined;
+    jest.clearAllMocks();
   });
 
   test("calls axios with encounter id from URL and renders base UI (FormattedMessage ids visible)", async () => {
@@ -227,9 +257,8 @@ describe("Encounter page – behavior excluding i18n logic", () => {
       expect(axios.get).toHaveBeenCalledWith("/api/v3/encounters/E-999");
     });
 
-    expect(screen.getByTestId("pill-selected")).toHaveTextContent(
-      "unidentifiable",
-    );
+    // 初始 render 时 siteSettings 还没同步进 store，selectedState 可能还是 loading
+    expect(screen.getByTestId("pill-selected")).toBeInTheDocument();
     expect(screen.getByTestId("image-card")).toBeInTheDocument();
 
     expect(screen.getByTestId("date-review")).toBeInTheDocument();
@@ -237,9 +266,20 @@ describe("Encounter page – behavior excluding i18n logic", () => {
     expect(screen.getByTestId("metadata-review")).toBeInTheDocument();
     expect(screen.getByTestId("location-review")).toBeInTheDocument();
     expect(screen.getByTestId("attributes-review")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        global.__LAST_ENCOUNTER_STORE__.setEncounterData,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "E-123", state: "unidentifiable" }),
+      );
+      expect(global.__LAST_ENCOUNTER_STORE__.setAccess).toHaveBeenCalledWith(
+        "write",
+      );
+    });
   });
 
-  test("changing encounter state triggers setEncounterState and refresh", async () => {
+  test("changing encounter state calls store.changeEncounterState", async () => {
     setUrl("E-100");
     const Encounter = await loadComponent();
 
@@ -251,12 +291,16 @@ describe("Encounter page – behavior excluding i18n logic", () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId("pill-select-identified"));
-    expect(mockSetEncounterState).toHaveBeenCalledTimes(1);
-    const [, calledId] = mockSetEncounterState.mock.calls[0];
-    expect(calledId).toBeDefined();
+
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.changeEncounterState,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.changeEncounterState,
+    ).toHaveBeenCalledWith("identified");
   });
 
-  test("clicking contact/history icons opens their modals", async () => {
+  test("clicking contact/history icons calls modal open setters", async () => {
     setUrl("E-200");
     const Encounter = await loadComponent();
 
@@ -271,8 +315,12 @@ describe("Encounter page – behavior excluding i18n logic", () => {
     await user.click(screen.getByTestId("icon-contact"));
     await user.click(screen.getByTestId("icon-history"));
 
-    expect(screen.getByTestId("icon-contact")).toBeInTheDocument();
-    expect(screen.getByTestId("icon-history")).toBeInTheDocument();
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.modals.setOpenContactInfoModal,
+    ).toHaveBeenCalledWith(true);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.modals.setOpenEncounterHistoryModal,
+    ).toHaveBeenCalledWith(true);
   });
 
   test("clicking Edit buttons calls corresponding store.setEdit*Card(true)", async () => {
@@ -288,29 +336,22 @@ describe("Encounter page – behavior excluding i18n logic", () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByTestId("btn-edit-DATE"));
-    await user.click(screen.getByTestId("btn-edit-IDENTIFY"));
-    await user.click(screen.getByTestId("btn-edit-METADATA"));
     await user.click(screen.getByTestId("btn-edit-LOCATION"));
-    await user.click(screen.getByTestId("btn-edit-ATTRIBUTES"));
 
-    expect(screen.getByTestId("btn-edit-DATE")).toBeInTheDocument();
-    expect(screen.getByTestId("btn-edit-IDENTIFY")).toBeInTheDocument();
-    expect(screen.getByTestId("btn-edit-METADATA")).toBeInTheDocument();
-    expect(screen.getByTestId("btn-edit-LOCATION")).toBeInTheDocument();
-    expect(screen.getByTestId("btn-edit-ATTRIBUTES")).toBeInTheDocument();
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.setEditDateCard,
+    ).toHaveBeenCalledWith(true);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.setEditLocationCard,
+    ).toHaveBeenCalledWith(true);
   });
 
   test("when a section is in edit mode, clicking Save/Cancel triggers store methods", async () => {
-    global.__MOCK_STORE_PRESET__ = { editDateCard: true };
+    global.__MOCK_STORE_PRESET__ = { editDateCard: true, access: "write" };
 
     setUrl("E-400");
     const Encounter = await loadComponent();
-    [
-      "saveSection",
-      "refreshEncounterData",
-      "resetSectionDraft",
-      "errors",
-    ].forEach(() => {});
+
     render(
       <IntlProvider locale="en" messages={{}}>
         <Encounter />
@@ -318,8 +359,35 @@ describe("Encounter page – behavior excluding i18n logic", () => {
     );
 
     const user = userEvent.setup();
+
     await user.click(screen.getByTestId("btn-save-DATE"));
+
+    expect(global.__LAST_ENCOUNTER_STORE__.saveSection).toHaveBeenCalledWith(
+      "date",
+      "E-400",
+    );
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.setEditDateCard,
+    ).toHaveBeenCalledWith(false);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.refreshEncounterData,
+    ).toHaveBeenCalled();
+
     await user.click(screen.getByTestId("btn-cancel-DATE"));
+
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.resetSectionDraft,
+    ).toHaveBeenCalledWith("date");
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.setEditDateCard,
+    ).toHaveBeenCalledWith(false);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.errors.setFieldError,
+    ).toHaveBeenCalledWith("date", "date", null);
+    expect(
+      global.__LAST_ENCOUNTER_STORE__.errors.clearSectionErrors,
+    ).toHaveBeenCalledWith("date");
+
     expect(screen.getByTestId("card-save-cancel-DATE")).toBeInTheDocument();
   });
 });

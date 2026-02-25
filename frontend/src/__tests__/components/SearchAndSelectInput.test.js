@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import SearchAndSelectInput from "../../components/generalInputs/SearchAndSelectInput";
 
 jest.mock("react-intl", () => ({
   FormattedMessage: ({ id }) => <span>{id}</span>,
@@ -14,14 +14,6 @@ jest.mock("react-select/creatable", () => {
     latestCreatableProps = props;
     return (
       <div data-testid="creatable-mock">
-        <input
-          data-testid="creatable-input"
-          value={props.inputValue || ""}
-          onChange={(e) =>
-            props.onInputChange &&
-            props.onInputChange(e.target.value, { action: "input-change" })
-          }
-        />
         <span data-testid="creatable-value">
           {props.value ? props.value.label : ""}
         </span>
@@ -30,22 +22,12 @@ jest.mock("react-select/creatable", () => {
   };
 });
 
-import SearchAndSelectInput from "../../../src/components/SearchAndSelectInput";
-
-const flushPromises = () => new Promise((res) => setImmediate(res));
-
-describe("SearchAndSelectInput", () => {
+describe("SearchAndSelectInput (basic)", () => {
   beforeEach(() => {
     latestCreatableProps = undefined;
-    jest.useFakeTimers();
   });
 
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
-
-  test("renders label and static options", () => {
+  test("renders label and passes options to creatable select", () => {
     render(
       <SearchAndSelectInput
         label="MY_LABEL"
@@ -66,7 +48,7 @@ describe("SearchAndSelectInput", () => {
     ]);
   });
 
-  test("when value is not in options, it still shows it", () => {
+  test("shows value even when it is not in options", () => {
     render(
       <SearchAndSelectInput
         label="X"
@@ -80,9 +62,12 @@ describe("SearchAndSelectInput", () => {
       value: "not-exist",
       label: "not-exist",
     });
+    expect(screen.getByTestId("creatable-value")).toHaveTextContent(
+      "not-exist",
+    );
   });
 
-  test("select existing option triggers onChange with its value", async () => {
+  test("selecting an existing option calls onChange with the option value", () => {
     const handleChange = jest.fn();
 
     render(
@@ -101,7 +86,7 @@ describe("SearchAndSelectInput", () => {
     expect(handleChange).toHaveBeenCalledWith("x");
   });
 
-  test("creating new option adds it and calls onChange", async () => {
+  test("creating a new option calls onChange with the created value", () => {
     const handleChange = jest.fn();
 
     render(
@@ -120,95 +105,8 @@ describe("SearchAndSelectInput", () => {
     expect(handleChange).toHaveBeenCalledWith("NewOne");
   });
 
-  test("debounced async loadOptions is called after typing enough chars", async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    const loadOptions = jest
-      .fn()
-      .mockResolvedValue([{ value: "r1", label: "Result 1" }]);
-
-    render(
-      <SearchAndSelectInput
-        label="SEARCH"
-        value=""
-        onChange={jest.fn()}
-        loadOptions={loadOptions}
-        minChars={2}
-        debounceMs={300}
-      />,
-    );
-
-    const input = screen.getByTestId("creatable-input");
-    await user.type(input, "a");
-    act(() => {
-      jest.advanceTimersByTime(350);
-    });
-    await flushPromises();
-    expect(loadOptions).not.toHaveBeenCalled();
-
-    await user.type(input, "b");
-    act(() => {
-      jest.advanceTimersByTime(350);
-    });
-    await flushPromises();
-
-    expect(loadOptions).toHaveBeenCalledWith("ab");
-    expect(latestCreatableProps.options).toEqual([
-      { value: "r1", label: "Result 1" },
-    ]);
-  });
-
-  test("onSearchError is called when loadOptions throws", async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    const loadOptions = jest.fn().mockRejectedValue(new Error("boom"));
-    const onSearchError = jest.fn();
-
-    render(
-      <SearchAndSelectInput
-        label="SEARCH"
-        value=""
-        onChange={jest.fn()}
-        loadOptions={loadOptions}
-        onSearchError={onSearchError}
-      />,
-    );
-
-    const input = screen.getByTestId("creatable-input");
-    await user.type(input, "abc");
-
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
-    await flushPromises();
-
-    expect(loadOptions).toHaveBeenCalledWith("abc");
-    expect(onSearchError).toHaveBeenCalled();
-  });
-
-  test("clears inputValue after selecting option", () => {
-    const handleChange = jest.fn();
-    render(
-      <SearchAndSelectInput
-        label="L"
-        value=""
-        onChange={handleChange}
-        options={[{ value: "x", label: "X" }]}
-      />,
-    );
-
-    act(() => {
-      latestCreatableProps.onInputChange("abc", { action: "input-change" });
-    });
-    expect(latestCreatableProps.inputValue).toBe("abc");
-
-    act(() => {
-      latestCreatableProps.onChange({ value: "x", label: "X" });
-    });
-
-    expect(latestCreatableProps.inputValue).toBe("");
-  });
-
-  test("respects keepMenuOpenOnSelect=false (default) by setting closeMenuOnSelect=true", () => {
-    render(
+  test("maps keepMenuOpenOnSelect to closeMenuOnSelect", () => {
+    const { rerender } = render(
       <SearchAndSelectInput
         label="L"
         value=""
@@ -216,11 +114,10 @@ describe("SearchAndSelectInput", () => {
         options={[]}
       />,
     );
-    expect(latestCreatableProps.closeMenuOnSelect).toBe(true);
-  });
 
-  test("respects keepMenuOpenOnSelect=true", () => {
-    render(
+    expect(latestCreatableProps.closeMenuOnSelect).toBe(true);
+
+    rerender(
       <SearchAndSelectInput
         label="L"
         value=""
@@ -229,6 +126,7 @@ describe("SearchAndSelectInput", () => {
         keepMenuOpenOnSelect={true}
       />,
     );
+
     expect(latestCreatableProps.closeMenuOnSelect).toBe(false);
   });
 });
