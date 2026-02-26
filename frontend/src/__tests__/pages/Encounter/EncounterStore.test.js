@@ -96,6 +96,232 @@ describe("EncounterStore", () => {
       expect(store.editMetadataCard).toBe(false);
     });
 
+    it("should filter and map measurements correctly", () => {
+      const mockData = {
+        id: "enc-123",
+        measurements: [
+          { type: "length", value: 150, units: "cm" },
+          { type: null, value: 100 },
+          { type: "weight", value: 50 },
+        ],
+      };
+
+      store.setEncounterData(mockData);
+
+      expect(store.measurementValues).toHaveLength(2);
+      expect(store.measurementValues[0].type).toBe("length");
+      expect(store.measurementValues[1].type).toBe("weight");
+    });
+
+    describe("Card Edit States", () => {
+      it("should toggle date card edit state", () => {
+        expect(store.editDateCard).toBe(false);
+        store.setEditDateCard(true);
+        expect(store.editDateCard).toBe(true);
+      });
+
+      it("should toggle identify card edit state", () => {
+        store.setEditIdentifyCard(true);
+        expect(store.editIdentifyCard).toBe(true);
+      });
+
+      it("should toggle metadata card edit state", () => {
+        store.setEditMetadataCard(true);
+        expect(store.editMetadataCard).toBe(true);
+      });
+
+      it("should toggle location card edit state", () => {
+        store.setEditLocationCard(true);
+        expect(store.editLocationCard).toBe(true);
+      });
+
+      it("should toggle attributes card edit state", () => {
+        store.setEditAttributesCard(true);
+        expect(store.editAttributesCard).toBe(true);
+      });
+    });
+
+    it("should search individuals by name", async () => {
+      const mockResults = [
+        { id: "ind-1", names: ["Whale-001"] },
+        { id: "ind-2", names: ["Whale-002"] },
+      ];
+
+      axios.post.mockResolvedValue({ data: { hits: mockResults } });
+
+      await store.searchIndividualsByNameAndId("Whale");
+
+      expect(axios.post).toHaveBeenCalledWith(
+        "/api/v3/search/individual?size=20&from=0",
+        expect.objectContaining({
+          query: expect.objectContaining({
+            bool: expect.objectContaining({
+              minimum_should_match: 1,
+              should: expect.arrayContaining([
+                expect.objectContaining({
+                  wildcard: expect.objectContaining({
+                    names: expect.objectContaining({
+                      value: "*Whale*",
+                      case_insensitive: true,
+                    }),
+                  }),
+                }),
+                expect.objectContaining({
+                  wildcard: expect.objectContaining({
+                    id: expect.objectContaining({
+                      value: "*Whale*",
+                      case_insensitive: true,
+                    }),
+                  }),
+                }),
+              ]),
+            }),
+          }),
+        }),
+      );
+      expect(store.individualSearchResults).toEqual(mockResults);
+    });
+  });
+
+  describe("Sighting Search", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("should search sightings by ID", async () => {
+      const mockResults = [{ id: "sight-001" }, { id: "sight-002" }];
+
+      axios.post.mockResolvedValue({ data: { hits: mockResults } });
+
+      await store.searchSightingsById("sight");
+
+      expect(axios.post).toHaveBeenCalledWith(
+        "/api/v3/search/occurrence?size=20&from=0",
+        expect.objectContaining({
+          query: expect.objectContaining({
+            bool: expect.objectContaining({
+              filter: expect.arrayContaining([
+                expect.objectContaining({
+                  wildcard: expect.objectContaining({
+                    id: expect.objectContaining({
+                      value: "*sight*",
+                      case_insensitive: true,
+                    }),
+                  }),
+                }),
+              ]),
+            }),
+          }),
+        }),
+      );
+      expect(store.sightingSearchResults).toEqual(mockResults);
+    });
+
+    describe("Tag Management", () => {
+      it("should set metal tag values", () => {
+        const tags = [{ location: "dorsal", number: "123" }];
+        store.setMetalTagValues(tags);
+        expect(store.metalTagValues).toEqual(tags);
+      });
+
+      it("should merge acoustic tag values", () => {
+        store.setEncounterData({
+          id: "enc-123",
+          acousticTag: { serialNumber: "A123" },
+        });
+
+        store.setAcousticTagValues({ idNumber: "ID456" });
+
+        expect(store.acousticTagValues).toEqual({
+          serialNumber: "A123",
+          idNumber: "ID456",
+        });
+      });
+
+      it("should merge satellite tag values", () => {
+        store.setEncounterData({
+          id: "enc-123",
+          satelliteTag: { name: "SAT-001" },
+        });
+
+        store.setSatelliteTagValues({ serialNumber: "SER123" });
+
+        expect(store.satelliteTagValues).toEqual({
+          name: "SAT-001",
+          serialNumber: "SER123",
+        });
+      });
+    });
+
+    it("should get measurement by type", () => {
+      store._measurementValues = [
+        {
+          type: "length",
+          value: 150,
+          units: "cm",
+          samplingProtocol: "standard",
+        },
+      ];
+
+      const measurement = store.getMeasurement("length");
+
+      expect(measurement).toEqual({
+        type: "length",
+        value: 150,
+        units: "cm",
+        samplingProtocol: "standard",
+      });
+    });
+
+    it("should update existing measurement", () => {
+      store._measurementValues = [
+        { type: "length", value: 100, units: "cm", samplingProtocol: "" },
+      ];
+
+      store.setMeasurementValue("length", 150);
+
+      expect(store.measurementValues).toHaveLength(1);
+      expect(store.measurementValues[0].value).toBe(150);
+    });
+
+    it("should handle tracking patch error", async () => {
+      store.setMetalTagValues([{ location: "dorsal", number: "002" }]);
+      axios.patch.mockRejectedValue(new Error("Save failed"));
+
+      await expect(store.patchTracking()).rejects.toThrow();
+      expect(toast.error).toHaveBeenCalled();
+    });
+
+    it("should handle site settings when encounter data has no species", () => {
+      store.setEncounterData({ id: "enc-123" });
+      const mockSettings = {
+        siteTaxonomies: [],
+        behaviorOptions: {
+          "": ["feeding", "traveling"],
+        },
+        behavior: ["resting"],
+      };
+
+      store.setSiteSettings(mockSettings);
+      expect(store.behaviorOptions.length).toBeGreaterThan(0);
+    });
+
+    it("should handle site settings when encounterData is null", () => {
+      const mockSettings = {
+        siteTaxonomies: [],
+        behaviorOptions: {
+          "": ["feeding"],
+        },
+        behavior: [],
+      };
+      store.setSiteSettings(mockSettings);
+      expect(store.behaviorOptions.length).toBeGreaterThan(0);
+    });
+
     it("toggles editLocationCard state", () => {
       expect(store.editLocationCard).toBe(false);
 
