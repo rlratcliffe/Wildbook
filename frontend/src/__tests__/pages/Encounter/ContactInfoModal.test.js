@@ -69,7 +69,7 @@ const renderModal = (ui) =>
   );
 
 const makeStore = (overrides = {}) => ({
-  access: "write", // ✅ 关键
+  access: "write",
   encounterData: {
     submitterInfo: {},
     submitters: [],
