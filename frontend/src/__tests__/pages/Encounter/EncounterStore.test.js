@@ -65,6 +65,115 @@ describe("EncounterStore", () => {
     });
   });
 
+  describe("Card Edit States", () => {
+    it("toggles editDateCard state", () => {
+      expect(store.editDateCard).toBe(false);
+
+      store.setEditDateCard(true);
+      expect(store.editDateCard).toBe(true);
+
+      store.setEditDateCard(false);
+      expect(store.editDateCard).toBe(false);
+    });
+
+    it("toggles editIdentifyCard state", () => {
+      expect(store.editIdentifyCard).toBe(false);
+
+      store.setEditIdentifyCard(true);
+      expect(store.editIdentifyCard).toBe(true);
+
+      store.setEditIdentifyCard(false);
+      expect(store.editIdentifyCard).toBe(false);
+    });
+
+    it("toggles editMetadataCard state", () => {
+      expect(store.editMetadataCard).toBe(false);
+
+      store.setEditMetadataCard(true);
+      expect(store.editMetadataCard).toBe(true);
+
+      store.setEditMetadataCard(false);
+      expect(store.editMetadataCard).toBe(false);
+    });
+
+    it("toggles editLocationCard state", () => {
+      expect(store.editLocationCard).toBe(false);
+
+      store.setEditLocationCard(true);
+      expect(store.editLocationCard).toBe(true);
+
+      store.setEditLocationCard(false);
+      expect(store.editLocationCard).toBe(false);
+    });
+
+    it("toggles editAttributesCard state", () => {
+      expect(store.editAttributesCard).toBe(false);
+
+      store.setEditAttributesCard(true);
+      expect(store.editAttributesCard).toBe(true);
+
+      store.setEditAttributesCard(false);
+      expect(store.editAttributesCard).toBe(false);
+    });
+
+    it("toggles editTracking state", () => {
+      expect(store.editTracking).toBe(false);
+
+      store.setEditTracking(true);
+      expect(store.editTracking).toBe(true);
+
+      store.setEditTracking(false);
+      expect(store.editTracking).toBe(false);
+    });
+
+    it("toggles editMeasurements state", () => {
+      expect(store.editMeasurements).toBe(false);
+
+      store.setEditMeasurements(true);
+      expect(store.editMeasurements).toBe(true);
+
+      store.setEditMeasurements(false);
+      expect(store.editMeasurements).toBe(false);
+    });
+
+    it("toggles editBiologicalSamples state", () => {
+      expect(store.editBiologicalSamples).toBe(false);
+
+      store.setEditBiologicalSamples(true);
+      expect(store.editBiologicalSamples).toBe(true);
+
+      store.setEditBiologicalSamples(false);
+      expect(store.editBiologicalSamples).toBe(false);
+    });
+
+    it("can enable multiple card edit states simultaneously", () => {
+      store.setEditDateCard(true);
+      store.setEditLocationCard(true);
+      store.setEditAttributesCard(true);
+
+      expect(store.editDateCard).toBe(true);
+      expect(store.editLocationCard).toBe(true);
+      expect(store.editAttributesCard).toBe(true);
+    });
+  });
+
+  it("should remove contact successfully", async () => {
+    store.setEncounterData({
+      id: "enc-123",
+      submitter: [{ id: "user-1", name: "John" }],
+    });
+
+    axios.patch.mockResolvedValue({ status: 200 });
+
+    await store.removeContact("submitter", "user-1");
+
+    expect(axios.patch).toHaveBeenCalledWith("/api/v3/encounters/enc-123", [
+      { op: "remove", path: "submitter", value: "user-1" },
+    ]);
+    expect(store.encounterData.submitter).toHaveLength(0);
+    expect(toast.success).toHaveBeenCalled();
+  });
+
   describe("Encounter Data Management", () => {
     it("sets encounter data and derived fields", () => {
       const mockData = {
