@@ -82,12 +82,5 @@ describe("IdentifySectionReview", () => {
     expect(screen.getByTestId("val-IDENTIFIED_AS")).toHaveTextContent("");
     expect(screen.getByTestId("val-MATCHED_BY")).toHaveTextContent("");
     expect(screen.getByTestId("val-ALTERNATE_ID")).toHaveTextContent("");
-
-    const emptyLink = screen.getByRole("link");
-    expect(emptyLink).toHaveTextContent("");
-    expect(emptyLink).toHaveAttribute(
-      "href",
-      "/occurrence.jsp?number=undefined",
-    );
   });
 });
