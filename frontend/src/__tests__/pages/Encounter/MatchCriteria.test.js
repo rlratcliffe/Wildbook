@@ -28,13 +28,10 @@ jest.mock("react-bootstrap", () => {
   return { Modal };
 });
 
-// 新组件用了 ContainerWithSpinner，mock 成直接渲染 children
 jest.mock("../../../components/ContainerWithSpinner", () => (props) => (
   <div data-testid="container-spinner">{props.children}</div>
 ));
 
-// 注意：组件里是 lazy(() => import("antd/es/tree-select"))
-// 所以这里需要 default export
 jest.mock("antd/es/tree-select", () => ({
   __esModule: true,
   default: (props) => (
@@ -139,13 +136,11 @@ describe("MatchCriteriaModal", () => {
     expect(screen.getByText("MATCH_CRITERIA")).toBeInTheDocument();
     expect(screen.getByText("MATCH_DESC_1")).toBeInTheDocument();
 
-    // TreeSelect 是 lazy + Suspense，等它渲染出来
     expect(await screen.findByTestId("tree-select")).toBeInTheDocument();
 
     expect(screen.getByTestId("select-input")).toBeInTheDocument();
     expect(screen.getByTestId("react-select")).toBeInTheDocument();
 
-    // 两个 MainButton：MATCH + CANCEL
     const buttons = screen.getAllByTestId("main-button");
     expect(buttons).toHaveLength(2);
 
