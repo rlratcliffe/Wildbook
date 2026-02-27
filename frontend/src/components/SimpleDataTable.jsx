@@ -10,7 +10,8 @@ const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
   const [pagedData, setPagedData] = useState([]);
   const [dataset, setDataset] = useState([]);
 
-  const pageCount = Math.ceil(data.length / perPage);
+  const safePerPage = Math.max(1, perPage);
+  const pageCount = Math.ceil(data.length / safePerPage);
 
   useEffect(() => {
     if (dataset.length === 0) {
@@ -19,16 +20,19 @@ const SimpleDataTable = ({ columns = [], data = [], perPage = 10 }) => {
         tableID: row.tableID ?? index + 1,
       }));
       setDataset(indexedData);
+      setCurrentPage(0);
+      setPagedData([...indexedData].slice(0, safePerPage));
+    } else {
+      setCurrentPage(0);
+      setPagedData([...dataset].slice(0, safePerPage));
     }
-    setCurrentPage(0);
-    setPagedData([...dataset].slice(0, perPage));
-  }, [data]);
+  }, [data, safePerPage]);
 
   useEffect(() => {
-    const start = currentPage * perPage;
-    const end = start + perPage;
+    const start = currentPage * safePerPage;
+    const end = start + safePerPage;
     setPagedData([...dataset].slice(start, end));
-  }, [dataset, currentPage]);
+  }, [dataset, currentPage, safePerPage]);
 
   const userColumns = columns.map((col) => ({
     id: col.selector,
